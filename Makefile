@@ -20,6 +20,9 @@ format:
 	@go fmt ./...
 	@go vet ./...
 
+migrate-create:
+	@migrate create -ext sql -dir ./migrations -seq $(v)
+
 migrate-up:
 	@migrate -database "$(DATABASE_URL)" -path migrations up
 
@@ -39,9 +42,6 @@ test-setup:
 test-coverage:
 	@go test -coverprofile=coverage.out ./internal/...
 	@go tool cover -func=coverage.out
-
-test-integration:
-	@go test -v --tags=integration ./...
 
 test-html:
 	@go test -coverprofile=coverage.out ./...

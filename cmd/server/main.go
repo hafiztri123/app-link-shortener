@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/oschwald/maxminddb-golang"
 )
 
 func main() {
@@ -34,6 +35,14 @@ func main() {
 		slog.Error("Could not load config", "error", err)
 		os.Exit(1)
 	}
+
+	mmdb, err := maxminddb.Open("../../GeoLite2-City.mmdb")
+	if err != nil {
+		slog.Error("Could not open maxmind database", "error", err)
+		os.Exit(1)
+	}
+
+	defer mmdb.Close()
 
 	db := database.Connect(cfg.DatabaseURL)
 	redis, err := redis.NewClient(context.Background(), cfg.RedisURL, nil)

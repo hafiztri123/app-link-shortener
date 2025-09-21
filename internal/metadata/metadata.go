@@ -10,21 +10,21 @@ import (
 	"github.com/oschwald/maxminddb-golang"
 )
 
-
 type contextKey string
+
 const ClickDataKey = contextKey("clickData")
 
 type Click struct {
-	Timestamp time.Time `json:"timestamp"` 
-	Path string `json:"path"`
-	IPAddress string `json:"ip_address"`
-	Referrer string `json:"referrer"`
-	UserAgent string `json:"user_agent"`
-	Device string `json:"device"`
-	OS string `json:"os"`
-	Browser string `json:"browser"`
-	Country string `json:"country"`
-	City string `json:"city"`
+	Timestamp time.Time `json:"timestamp"`
+	Path      string    `json:"path"`
+	IPAddress string    `json:"ip_address"`
+	Referrer  string    `json:"referrer"`
+	UserAgent string    `json:"user_agent"`
+	Device    string    `json:"device"`
+	OS        string    `json:"os"`
+	Browser   string    `json:"browser"`
+	Country   string    `json:"country"`
+	City      string    `json:"city"`
 }
 
 type GeoIPCity struct {
@@ -37,13 +37,11 @@ type GeoIPCity struct {
 	} `maxminddb:"city"`
 }
 
-
 func MetadataMiddleware(db *maxminddb.Reader) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ipStr, _, _ :=  net.SplitHostPort(r.RemoteAddr)
+			ipStr, _, _ := net.SplitHostPort(r.RemoteAddr)
 			ip := net.ParseIP(ipStr)
-
 
 			ua := useragent.Parse(r.Header.Get("User-Agent"))
 			var deviceType string
@@ -65,19 +63,19 @@ func MetadataMiddleware(db *maxminddb.Reader) func(http.Handler) http.Handler {
 				if cityName, ok := geoData.City.Names["en"]; ok {
 					city = cityName
 				}
-			} 
+			}
 
 			clickData := Click{
 				Timestamp: time.Now().UTC(),
-				Path: r.URL.Path,
+				Path:      r.URL.Path,
 				IPAddress: ipStr,
-				Referrer: r.Header.Get("Referer"),
+				Referrer:  r.Header.Get("Referer"),
 				UserAgent: r.Header.Get("User-Agent"),
-				Device: deviceType,
-				OS: ua.OS,
-				Browser: ua.Name,
-				Country: country,
-				City: city,
+				Device:    deviceType,
+				OS:        ua.OS,
+				Browser:   ua.Name,
+				Country:   country,
+				City:      city,
 			}
 
 			ctx := context.WithValue(r.Context(), ClickDataKey, clickData)
@@ -85,7 +83,4 @@ func MetadataMiddleware(db *maxminddb.Reader) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
-} 
-
-
-
+}

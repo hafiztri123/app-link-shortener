@@ -9,6 +9,7 @@ import (
 
 type Config struct {
 	DatabaseURL string
+	AnalyticsDatabaseURL string
 	RedisURL    string
 	IDOffset    uint64
 	SecretKey   string

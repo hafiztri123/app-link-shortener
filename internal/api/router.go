@@ -2,10 +2,10 @@ package api
 
 import (
 	"hafiztri123/app-link-shortener/internal/auth"
+	"hafiztri123/app-link-shortener/internal/metadata"
 	"hafiztri123/app-link-shortener/internal/metrics"
 	"hafiztri123/app-link-shortener/internal/url"
 	"hafiztri123/app-link-shortener/internal/user"
-	"hafiztri123/app-link-shortener/internal/metadata"
 
 	"net/http"
 	"time"
@@ -22,7 +22,7 @@ type DB interface {
 
 type Server struct {
 	db           DB
-	mmdb 		 *maxminddb.Reader
+	mmdb         *maxminddb.Reader
 	redis        *redis.Client
 	urlService   url.URLService
 	userService  user.UserService

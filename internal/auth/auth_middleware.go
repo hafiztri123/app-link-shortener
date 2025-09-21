@@ -15,7 +15,7 @@ const UserContextKey contextKey = "user"
 func AuthMiddleware(ts *TokenService, permissive bool) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			authHeader := r.Header.Get("Authorization") 
+			authHeader := r.Header.Get("Authorization")
 
 			if permissive && authHeader == "" {
 				h.ServeHTTP(w, r)

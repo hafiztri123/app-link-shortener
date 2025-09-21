@@ -5,11 +5,14 @@ import (
 	"hafiztri123/app-link-shortener/internal/metrics"
 	"hafiztri123/app-link-shortener/internal/url"
 	"hafiztri123/app-link-shortener/internal/user"
+	"hafiztri123/app-link-shortener/internal/metadata"
+
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-redis/redis/v8"
+	"github.com/oschwald/maxminddb-golang"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -19,14 +22,15 @@ type DB interface {
 
 type Server struct {
 	db           DB
+	mmdb 		 *maxminddb.Reader
 	redis        *redis.Client
 	urlService   url.URLService
 	userService  user.UserService
 	tokenService *auth.TokenService
 }
 
-func NewServer(db DB, redis *redis.Client, urlService url.URLService, userService user.UserService, ts *auth.TokenService) *Server {
-	return &Server{db: db, redis: redis, urlService: urlService, userService: userService, tokenService: ts}
+func NewServer(db DB, mmdb *maxminddb.Reader, redis *redis.Client, urlService url.URLService, userService user.UserService, ts *auth.TokenService) *Server {
+	return &Server{db: db, mmdb: mmdb, redis: redis, urlService: urlService, userService: userService, tokenService: ts}
 }
 
 func (s *Server) RegisterRoutes() http.Handler {
@@ -34,6 +38,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	// r.Use(RateLimiter(10, 20))
 	r.Use(RedisRateLimiter(s.redis, 20, 1*time.Minute))
+	r.Use(metadata.MetadataMiddleware(s.mmdb))
 
 	r.Use(metrics.PrometheusMiddleware)
 	r.Route("/api/v1", func(v1 chi.Router) {

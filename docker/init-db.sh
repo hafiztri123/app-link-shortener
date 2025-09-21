@@ -19,6 +19,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "analytics_db" <<-E
     CREATE TABLE IF NOT EXISTS clicks (
         id SERIAL PRIMARY KEY,
         timestamp TIMESTAMPTZ NOT NULL,
+        url_path TEXT,
         ip_address VARCHAR(45),
         referrer TEXT,
         user_agent TEXT,

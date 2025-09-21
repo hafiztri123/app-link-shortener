@@ -60,7 +60,7 @@ func main() {
 	userRepo := user.NewRepository(db)
 	userService := user.NewService(db, userRepo, tokenService)
 
-	server := api.NewServer(db, redis, urlService, userService, tokenService)
+	server := api.NewServer(db, mmdb, redis, urlService, userService, tokenService)
 	router := server.RegisterRoutes()
 
 	defer db.Close()

@@ -1,6 +1,7 @@
 package metadata
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"time"
@@ -10,9 +11,12 @@ import (
 )
 
 
+type contextKey string
+const ClickDataKey = contextKey("clickData")
 
 type Click struct {
-	Timestmap time.Time `json:"timestamp"`
+	Timestamp time.Time `json:"timestamp"` 
+	Path string `json:"path"`
 	IPAddress string `json:"ip_address"`
 	Referrer string `json:"referrer"`
 	UserAgent string `json:"user_agent"`
@@ -35,10 +39,11 @@ type GeoIPCity struct {
 
 
 func MetadataMiddleware(db *maxminddb.Reader) func(http.Handler) http.Handler {
-	return func(h http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ipStr, _, _ :=  net.SplitHostPort(r.RemoteAddr)
 			ip := net.ParseIP(ipStr)
+
 
 			ua := useragent.Parse(r.Header.Get("User-Agent"))
 			var deviceType string
@@ -63,7 +68,8 @@ func MetadataMiddleware(db *maxminddb.Reader) func(http.Handler) http.Handler {
 			} 
 
 			clickData := Click{
-				Timestmap: time.Now().UTC(),
+				Timestamp: time.Now().UTC(),
+				Path: r.URL.Path,
 				IPAddress: ipStr,
 				Referrer: r.Header.Get("Referer"),
 				UserAgent: r.Header.Get("User-Agent"),
@@ -74,7 +80,9 @@ func MetadataMiddleware(db *maxminddb.Reader) func(http.Handler) http.Handler {
 				City: city,
 			}
 
+			ctx := context.WithValue(r.Context(), ClickDataKey, clickData)
 
+			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 } 

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"hafiztri123/app-link-shortener/internal/auth"
+	"hafiztri123/app-link-shortener/internal/messaging"
 	"hafiztri123/app-link-shortener/internal/metadata"
 	"hafiztri123/app-link-shortener/internal/response"
 	"hafiztri123/app-link-shortener/internal/url"
@@ -18,7 +19,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-redis/redis/v8"
 )
 
 type Handler interface {
@@ -30,7 +30,6 @@ type Handler interface {
 	handleGenerateQR(http.ResponseWriter, *http.Request)
 }
 
-const streamName = "clicks_stream"
 
 func (s *Server) healthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	err := s.db.Ping()
@@ -137,30 +136,33 @@ func (s *Server) handleFetchURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	click, ok := r.Context().Value(metadata.ClickDataKey).(metadata.Click)
-	if !ok {
-		slog.Error("error: could not retrieve click data from context")
-		response.Error(w, http.StatusInternalServerError, "Something went wrong, please try again later")
-		return
+	if click, ok := r.Context().Value(metadata.ClickDataKey).(metadata.Click); ok {
+		clickEvent := messaging.ClickEvent{
+			Timestamp: click.Timestamp,
+			Path: click.Path,
+			IPAddress: click.IPAddress,
+			Referrer: click.Referrer,
+			UserAgent: click.UserAgent,
+			Device: click.Device,
+			OS: click.OS,
+			Browser: click.Browser,
+			Country: click.Country,
+			City: click.City,
+		}
+		
+		go func ()  {
+			ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+			defer cancel()
+
+			if err := s.rabbitmq.PublishClickEvent(ctx, clickEvent); err != nil {
+				slog.Error("Failed to publish click event", "error", err)
+			}
+			
+		}()
+
+		
 	}
 
-	clickMap := map[string]any{
-		"timestamp":  click.Timestamp.Format(time.RFC3339Nano),
-		"path": click.Path,
-		"ip_address": click.IPAddress,
-		"referrer":   click.Referrer,
-		"user_agent": click.UserAgent,
-		"device":     click.Device,
-		"os":         click.OS,
-		"browser":    click.Browser,
-		"country":    click.Country,
-		"city":       click.City,
-	}
-
-	s.redis.XAdd(r.Context(), &redis.XAddArgs{
-		Stream: streamName,
-		Values: clickMap,
-	}).Err()
 
 	http.Redirect(w, r, longURL, http.StatusMovedPermanently)
 }

@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"hafiztri123/app-link-shortener/internal/api"
 	"hafiztri123/app-link-shortener/internal/auth"
 	"hafiztri123/app-link-shortener/internal/config"
 	"hafiztri123/app-link-shortener/internal/database"
+	"hafiztri123/app-link-shortener/internal/messaging"
 	"hafiztri123/app-link-shortener/internal/redis"
 	"hafiztri123/app-link-shortener/internal/url"
 	"hafiztri123/app-link-shortener/internal/user"
@@ -53,6 +55,11 @@ func main() {
 	}
 
 	tokenService := auth.NewTokenService(cfg.SecretKey)
+	rabbitmq, err := messaging.NewRabbitMQ(cfg.RabbitMQAddr, cfg.ClicksQueue)
+	if err != nil {
+		slog.Error("Could not establish rabbit mq", "error", err)
+		os.Exit(1)
+	}
 
 	urlRepo := url.NewRepository(db)
 	urlService := url.NewService(urlRepo, redis, cfg.IDOffset)
@@ -60,19 +67,19 @@ func main() {
 	userRepo := user.NewRepository(db)
 	userService := user.NewService(db, userRepo, tokenService)
 
-	server := api.NewServer(db, mmdb, redis, urlService, userService, tokenService)
+	server := api.NewServer(db, mmdb, redis, urlService, userService, tokenService, rabbitmq)
 	router := server.RegisterRoutes()
 
 	defer db.Close()
 	defer redis.Close()
 
 	srv := &http.Server{
-		Addr:    ":8080",
+		Addr:    fmt.Sprintf(":%s", cfg.AppPort),
 		Handler: router,
 	}
 
 	go func() {
-		slog.Info("Listening on port :8080")
+		slog.Info(fmt.Sprintf("Listening on port :%s", cfg.AppPort))
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			slog.Error("Failed to start server", "error", err)
 			os.Exit(1)

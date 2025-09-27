@@ -2,85 +2,71 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
 )
+
+const clickQueue = "click_events"
 
 type Config struct {
 	DatabaseAddr string
 	RedisAddr    string
 	IDOffset     uint64
 	SecretKey    string
+	AppPort      string
+	RabbitMQAddr string
+	ClicksQueue string
 }
 
 func Load() (*Config, error) {
 	errors := []string{}
 
-	appUrl, ok := os.LookupEnv("APP_URL")
-	if !ok {
-		errors = append(errors, "APP_URL Environment variable not set")
-	}
+	appUrl := getEnvOrDefault("APP_URL", "localhost")
+	idOffset, err := strconv.ParseUint(getEnvOrDefault("ID_OFFSET", "10000000"), 10, 64) 
 
-	dbPort, ok := os.LookupEnv("DB_PORT")
-	if !ok {
-		errors = append(errors, "DB_PORT Environment variable not set")
-	}
-
-	dbTransactionName, ok := os.LookupEnv("DB_TRANSACTION_NAME")
-	if !ok {
-		errors = append(errors, "DB_TRANSACTION_NAME Environment variable not set")
-	}
-
-	dbUser, ok := os.LookupEnv("DB_USER")
-	if !ok {
-		errors = append(errors, "DB_USER Environment variable not set")
-	}
-
-	dbPassword, ok := os.LookupEnv("DB_PASSWORD")
-	if !ok {
-		errors = append(errors, "DB_PASSWORD Environment variable not set")
-	}
-
-	dbSsl, ok := os.LookupEnv("DB_SSL")
-	if !ok {
-		errors = append(errors, "DB_SSL Environment variable not set")
-	}
-
-	redisPort, ok := os.LookupEnv("REDIS_PORT")
-	if !ok {
-		errors = append(errors, "REDIS_PORT Environment variable not set")
-	}
-
-	dbAddr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", dbUser, dbPassword, appUrl, dbPort, dbTransactionName, dbSsl)
-
-	redisAddr := fmt.Sprintf("%s:%s", appUrl, redisPort)
-
-	idOffset, ok := os.LookupEnv("ID_OFFSET")
-	if !ok {
-		errors = append(errors, "ID_OFFSET Environment variable not set")
-	}
-
-	jwt, ok := os.LookupEnv("JWT_SECRET")
-	if !ok {
-		errors = append(errors, "JWT_SECRET Environment variable not set")
-	}
-
-	convertedIdOffset, err := strconv.ParseUint(idOffset, 10, 64)
 	if err != nil {
-		errors = append(errors, fmt.Sprintf("Failed to parse ID_OFFSET: %v", err))
+		errors = append(errors, err.Error())
 	}
+
+
+	dbAddr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", 
+		getEnvOrDefault("DB_USER", "postgres"), 
+		getEnvOrDefault("DB_PASSWORD", "password"), 
+		appUrl,
+		getEnvOrDefault("DB_PORT", "5432"), 
+		getEnvOrDefault("DB_TRANSACTION_NAME", "app_db"),
+		getEnvOrDefault("DB_SSL", "disable"),
+	)
+
+	redisAddr := fmt.Sprintf("%s:%s", 
+		appUrl, 
+		getEnvOrDefault("REDIS_PORT", "6379"),
+	)
 
 	if len(errors) > 0 {
-		errorString := strings.Join(errors, "\n")
-		return nil, fmt.Errorf("FATAL: %s", errorString)
+		slog.Error("Failed to load config", "errors", errors)
+		return nil, fmt.Errorf("failed to load config: %s", strings.Join(errors, ", "))
 	}
+
 
 	return &Config{
 		DatabaseAddr: dbAddr,
 		RedisAddr:    redisAddr,
-		IDOffset:     convertedIdOffset,
-		SecretKey:    jwt,
+		IDOffset:     idOffset,
+		SecretKey:    getEnvOrDefault("JWT_SECRET", "secret"),
+		RabbitMQAddr: getEnvOrDefault("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
+		ClicksQueue: clickQueue,
+		AppPort: getEnvOrDefault("APP_PORT", "8080"),
 	}, nil
 
+}
+
+func getEnvOrDefault (key, defaultValue string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+
+	return defaultValue
 }

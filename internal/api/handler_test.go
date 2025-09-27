@@ -559,7 +559,7 @@ func TestHandleGenerateQR(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockUrlService := &mockURLService{}
 			tc.setMockUrlService(mockUrlService)
-			server := NewServer(nil, nil, nil, mockUrlService, nil, nil)
+			server := NewServer(nil, nil, nil, mockUrlService, nil, nil, nil)
 
 			reqCtx := chi.NewRouteContext()
 

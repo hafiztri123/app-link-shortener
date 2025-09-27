@@ -2,6 +2,7 @@ package api
 
 import (
 	"hafiztri123/app-link-shortener/internal/auth"
+	"hafiztri123/app-link-shortener/internal/messaging"
 	"hafiztri123/app-link-shortener/internal/metadata"
 	"hafiztri123/app-link-shortener/internal/metrics"
 	"hafiztri123/app-link-shortener/internal/url"
@@ -27,10 +28,19 @@ type Server struct {
 	urlService   url.URLService
 	userService  user.UserService
 	tokenService *auth.TokenService
+	rabbitmq *messaging.RabbitMQ
 }
 
-func NewServer(db DB, mmdb *maxminddb.Reader, redis *redis.Client, urlService url.URLService, userService user.UserService, ts *auth.TokenService) *Server {
-	return &Server{db: db, mmdb: mmdb, redis: redis, urlService: urlService, userService: userService, tokenService: ts}
+func NewServer(db DB, mmdb *maxminddb.Reader, redis *redis.Client, urlService url.URLService, userService user.UserService, ts *auth.TokenService, rmq *messaging.RabbitMQ) *Server {
+	return &Server{
+		db: db, 
+		mmdb: mmdb, 
+		redis: redis, 
+		urlService: urlService, 
+		userService: userService, 
+		tokenService: ts, 
+		rabbitmq: rmq,
+	}
 }
 
 func (s *Server) RegisterRoutes() http.Handler {
